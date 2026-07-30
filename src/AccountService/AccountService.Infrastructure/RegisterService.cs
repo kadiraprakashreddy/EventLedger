@@ -9,7 +9,7 @@ namespace AccountService.Infrastructure;
 
 public static class RegisterService
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddAccountServiceInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<AccountDbContext>(options =>
             options.UseSqlite(configuration.GetConnectionString("AccountDb") ?? "Data Source=accountservice.db"));

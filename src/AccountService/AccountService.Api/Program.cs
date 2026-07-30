@@ -1,12 +1,32 @@
+using AccountService.Application.Handlers;
+using AccountService.Infrastructure;
+using  AccountService.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+
+// Infrastructure: DbContext + repositories
+builder.Services.AddAccountServiceInfrastructure(builder.Configuration);
+
+// MediatR: register command/query handlers from the Application assembly
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(ApplyTransactionCommandHandler).Assembly));
 
 var app = builder.Build();
+
+// Create or update the SQLite schema on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AccountDbContext>(); 
+
+     db.Database.EnsureCreated();
+
+    // for migrations:
+    //db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
