@@ -1,10 +1,23 @@
+using AccountService.Api.Logging;
+using AccountService.Api.Metrics;
 using AccountService.Api.Middleware;
 using AccountService.Application.Handlers;
 using AccountService.Infrastructure;
 using  AccountService.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Formatting.Json;
+
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Service", "AccountService")
+    .MinimumLevel.Information()
+    .WriteTo.Console(new LogFormatter())
+    .WriteTo.File(new LogFormatter(), "logs/accountservice-.json", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
 // Add services to the container.
 builder.Services.AddControllers()
@@ -22,6 +35,8 @@ builder.Services.AddMediatR(cfg =>
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AccountDbContext>();
+builder.Services.AddSingleton<MetricsRegistry>();
+
 
 var app = builder.Build();
 
@@ -46,7 +61,18 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<TraceIdMiddleware>();
+app.UseMiddleware<MetricsMiddleware>();
+app.UseSerilogRequestLogging();
 app.MapControllers();
 app.MapHealthChecks("/health");
+app.MapGet("/metrics", (MetricsRegistry registry) => Results.Ok(registry.Snapshot()));
 
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
