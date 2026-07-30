@@ -1,3 +1,4 @@
+using AccountService.Api.Middleware;
 using AccountService.Application.Handlers;
 using AccountService.Infrastructure;
 using  AccountService.Infrastructure.Data;
@@ -18,6 +19,9 @@ builder.Services.AddAccountServiceInfrastructure(builder.Configuration);
 // MediatR: register command/query handlers from the Application assembly
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(ApplyTransactionCommandHandler).Assembly));
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AccountDbContext>();
 
 var app = builder.Build();
 
@@ -41,7 +45,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
-
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
