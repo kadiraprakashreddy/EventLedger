@@ -85,6 +85,30 @@ public class GatewayToAccountServiceFlowTests : IDisposable
 
     private record BalanceDto(string AccountId, decimal Balance);
 
+    [Fact]
+    public async Task GetBalance_ProxiesToAccountService_ReturnsCurrentBalance()
+    {
+        var payload = new
+        {
+            eventId = "evt-int-balance-1",
+            accountId = "acct-int-balance-1",
+            type = "CREDIT",
+            amount = 75.00m,
+            currency = "USD",
+            eventTimestamp = DateTimeOffset.UtcNow
+        };
+
+        var submit = await _gatewayClient.PostAsJsonAsync("/events", payload);
+        Assert.Equal(HttpStatusCode.Created, submit.StatusCode);
+
+        var response = await _gatewayClient.GetAsync("/accounts/acct-int-balance-1/balance");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var balance = await response.Content.ReadFromJsonAsync<BalanceDto>();
+        Assert.NotNull(balance);
+        Assert.Equal(75.00m, balance!.Balance);
+    }
+
     public void Dispose()
     {
         _gatewayClient.Dispose();

@@ -5,8 +5,8 @@ namespace EventGateway.Application.Interfaces;
 public enum AccountServiceCallStatus
 {
     Success,
-    Unavailable,   // circuit open, timeout, connection refused, etc.
-    Rejected       // AccountService reachable but returned an error (e.g. validation)
+    Unavailable,   // circuit open, timeout, connection refused
+    Rejected       // AccountService reachable and returned an error
 }
 
 public record ApplyTransactionRequest(
@@ -19,4 +19,7 @@ public interface IAccountServiceClient
 {
     Task<AccountServiceCallResult> ApplyTransactionAsync(
         string accountId, ApplyTransactionRequest request, string traceId, CancellationToken ct);
+
+    Task<AccountServiceCallResult> GetBalanceAsync(
+        string accountId, string traceId, CancellationToken ct);
 }

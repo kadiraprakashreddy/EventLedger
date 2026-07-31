@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net;
+using System.Net.Http.Json;
 using EventGateway.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using Polly.CircuitBreaker;
@@ -54,6 +55,45 @@ public class AccountServiceHttpClient : IAccountServiceClient
             return new AccountServiceCallResult(AccountServiceCallStatus.Unavailable, null, "AccountService is unreachable.");
         }
     }
+
+    public async Task<AccountServiceCallResult> GetBalanceAsync(string accountId, string traceId, CancellationToken ct)
+    {
+        try
+        {
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"/accounts/{accountId}/balance");
+            httpRequest.Headers.Add("X-Trace-Id", traceId); // trace propagation
+
+            var response = await _httpClient.SendAsync(httpRequest, ct);
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return new AccountServiceCallResult(AccountServiceCallStatus.Rejected, null, "Account not found.");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<AccountBalanceResponse>(cancellationToken: ct);
+                return new AccountServiceCallResult(AccountServiceCallStatus.Success, body?.Balance, null);
+            }
+
+            _logger.LogWarning("AccountService rejected balance query. Status={Status} TraceId={TraceId}", response.StatusCode, traceId);
+            return new AccountServiceCallResult(AccountServiceCallStatus.Rejected, null, $"AccountService returned {response.StatusCode}");
+        }
+        catch (BrokenCircuitException)
+        {
+            _logger.LogWarning("Circuit open — short-circuiting balance query to AccountService. TraceId={TraceId}", traceId);
+            return new AccountServiceCallResult(AccountServiceCallStatus.Unavailable, null, "AccountService is currently unavailable (circuit open).");
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("AccountService balance query timed out. TraceId={TraceId}", traceId);
+            return new AccountServiceCallResult(AccountServiceCallStatus.Unavailable, null, "AccountService request timed out.");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "AccountService unreachable. TraceId={TraceId}", traceId);
+            return new AccountServiceCallResult(AccountServiceCallStatus.Unavailable, null, "AccountService is unreachable.");
+        }
+    }
 }
 
 internal record AccountServiceTransactionResponse(string AccountId, decimal Balance, bool WasNewlyApplied);
+internal record AccountBalanceResponse(string AccountId, decimal Balance);

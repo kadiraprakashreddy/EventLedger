@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AccountService.Api.Logging;
 using AccountService.Api.Metrics;
 using AccountService.Api.Middleware;
@@ -5,6 +6,7 @@ using AccountService.Application.Handlers;
 using AccountService.Infrastructure;
 using  AccountService.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Formatting.Json;
 
@@ -65,7 +67,24 @@ app.UseMiddleware<TraceIdMiddleware>();
 app.UseMiddleware<MetricsMiddleware>();
 app.UseSerilogRequestLogging();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new
+        {
+            service = "AccountService",
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            })
+        }));
+    }
+});
 app.MapGet("/metrics", (MetricsRegistry registry) => Results.Ok(registry.Snapshot()));
 
 try

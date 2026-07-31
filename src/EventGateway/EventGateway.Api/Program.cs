@@ -1,9 +1,11 @@
+using System.Text.Json;
 using EventGateway.Api.Logging;
 using EventGateway.Api.Metrics;
 using EventGateway.Api.Middleware;
 using EventGateway.Application.Handlers;
 using EventGateway.Infrastructure;
 using EventGateway.Infrastructure.Data;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Formatting.Json;
 
@@ -46,7 +48,24 @@ app.UseMiddleware<RequestTracingMiddleware>();
 app.UseMiddleware<MetricsMiddleware>();
 app.UseSerilogRequestLogging();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new
+        {
+            service = "EventGateway",
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            })
+        }));
+    }
+});
 app.MapGet("/metrics", (MetricsRegistry registry) => Results.Ok(registry.Snapshot()));
 
 try

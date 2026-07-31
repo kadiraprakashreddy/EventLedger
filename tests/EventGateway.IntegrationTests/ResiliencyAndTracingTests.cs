@@ -111,6 +111,19 @@ public class ResiliencyTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetBalance_AccountServiceUnreachable_Returns503WithClearError()
+    {
+        // Requirement #6: balance queries must return a clear error indicating AccountService
+        // is unreachable, not a hang or a 500.
+        var response = await _gatewayClient.GetAsync("/accounts/acct-resiliency-balance/balance");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Contains("unreachable", body.RootElement.GetProperty("error").GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Dispose()
     {
         _gatewayClient.Dispose();
