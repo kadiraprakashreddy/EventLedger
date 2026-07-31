@@ -482,3 +482,10 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Runtime artifacts (local SQLite data files, Serilog output) — not source, must not be committed
+src/**/*.db
+src/**/*.db-shm
+src/**/*.db-wal
+logs/
+

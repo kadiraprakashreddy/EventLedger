@@ -12,7 +12,7 @@ Log.Logger = new LoggerConfiguration()
     .Enrich.WithProperty("Service", "EventGateway")
     .MinimumLevel.Information()
     .WriteTo.Console(new LogFormatter())
-    .WriteTo.File(new LogFormatter(), "logs/accountservice-.json", rollingInterval: RollingInterval.Day)
+    .WriteTo.File(new LogFormatter(), "logs/eventgateway-.json", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);

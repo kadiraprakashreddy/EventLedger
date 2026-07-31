@@ -1,0 +1,35 @@
+services:
+  accountservice:
+    build:
+      context: .
+      dockerfile: src/AccountService/AccountService.Api/Dockerfile
+    ports:
+      - "5005:8080"
+    volumes:
+      - accountservice-data:/app/data
+    environment:
+      - ConnectionStrings__AccountDb=Data Source=/app/data/accountservice.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eventgateway:
+    build:
+      context: .
+      dockerfile: src/EventGateway/EventGateway.Api/Dockerfile
+    ports:
+      - "5006:8080"
+    volumes:
+      - eventgateway-data:/app/data
+    environment:
+      - ConnectionStrings__EventDb=Data Source=/app/data/eventgateway.db
+      - AccountService__BaseUrl=http://accountservice:8080
+    depends_on:
+      accountservice:
+        condition: service_healthy
+
+volumes:
+  accountservice-data:
+  eventgateway-data:
