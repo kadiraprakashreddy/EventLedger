@@ -76,3 +76,7 @@ finally
 {
     Log.CloseAndFlush();
 }
+namespace AccountService.Api
+{
+    public partial class Program { } // for integration tests
+}

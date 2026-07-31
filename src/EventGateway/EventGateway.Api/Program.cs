@@ -57,3 +57,8 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+namespace EventGateway.Api
+{
+    public partial class Program { } // for integration tests
+}

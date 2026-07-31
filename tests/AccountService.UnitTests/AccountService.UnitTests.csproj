@@ -19,7 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\AccountService\AccountService.Application\AccountService.Application.csproj" />
     <ProjectReference Include="..\..\src\AccountService\AccountService.Domain\AccountService.Domain.csproj" />
   </ItemGroup>
 
