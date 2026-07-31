@@ -296,9 +296,70 @@ Simple, lightweight observability without requiring Prometheus or similar.
 If you want, I can next turn this into a polished Markdown README file (with sections like “Architecture Overview”, “Running Locally”, “Deployment Notes”, etc.) tailored for a senior .NET/Azure interview-style repo.
 
 
-Sources
+Test cases from Bash:
+===================
 
-Pro
-Free preview of advanced search enabled.
+ Health & Metrics
+======================
+curl http://localhost:5006/health
+curl http://localhost:5005/health
+curl http://localhost:5006/metrics
+curl http://localhost:5005/metrics
+
+Postive test cases:
+==========================
+
+curl -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t01","accountId":"acct-A","type":"CREDIT","amount":500,"currency":"USD","eventTimestamp":"2026-07-30T08:00:00Z"}'
+
+curl -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t02","accountId":"acct-A","type":"DEBIT","amount":150,"currency":"USD","eventTimestamp":"2026-07-30T08:05:00Z"}'
+
+curl http://localhost:5006/events/t01
+curl "http://localhost:5006/events?account=acct-A"
+curl http://localhost:5005/accounts/acct-A/balance
+curl http://localhost:5005/accounts/acct-A
+
+Validation & Error Handling
+============================
+# negative amount
+curl -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t06","accountId":"acct-D","type":"CREDIT","amount":-10,"currency":"USD","eventTimestamp":"2026-07-30T09:00:00Z"}'
+
+# zero amount
+curl -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t07","accountId":"acct-D","type":"CREDIT","amount":0,"currency":"USD","eventTimestamp":"2026-07-30T09:00:00Z"}'
+
+# missing required field (currency)
+curl -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t08","accountId":"acct-D","type":"CREDIT","amount":10,"eventTimestamp":"2026-07-30T09:00:00Z"}'
+
+# invalid type
+curl -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t09","accountId":"acct-D","type":"TRANSFER","amount":10,"currency":"USD","eventTimestamp":"2026-07-30T09:00:00Z"}'
+
+# malformed timestamp
+curl -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t10","accountId":"acct-D","type":"CREDIT","amount":10,"currency":"USD","eventTimestamp":"not-a-date"}'
 
 
+  trace
+  ==========================
+
+  curl -i -X POST "http://localhost:5006/events" -H "Content-Type: application/json" -H "X-Trace-Id: my-custom-trace-999" \
+  -d '{"eventId":"t11","accountId":"acct-E","type":"CREDIT","amount":25,"currency":"USD","eventTimestamp":"2026-07-30T09:00:00Z"}'
+
+  Circuit Breaker / Resiliency
+  ==========================
+
+  curl -w "\n%{time_total}s\n" -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t12","accountId":"acct-F","type":"CREDIT","amount":25,"currency":"USD","eventTimestamp":"2026-07-30T09:00:00Z"}'
+
+curl -w "\n%{time_total}s\n" -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t13","accountId":"acct-F","type":"CREDIT","amount":25,"currency":"USD","eventTimestamp":"2026-07-30T09:01:00Z"}'
+
+curl -w "\n%{time_total}s\n" -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t14","accountId":"acct-F","type":"CREDIT","amount":25,"currency":"USD","eventTimestamp":"2026-07-30T09:02:00Z"}'
+
+curl -w "\n%{time_total}s\n" -X POST "http://localhost:5006/events" -H "Content-Type: application/json" \
+  -d '{"eventId":"t15","accountId":"acct-F","type":"CREDIT","amount":25,"currency":"USD","eventTimestamp":"2026-07-30T09:03:00Z"}'
